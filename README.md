@@ -1,16 +1,20 @@
-## Hi there 👋
+# Wasel Smart (واصل)
 
-<!--
-**Wasel-Smart/Wasel-Smart** is a ✨ _special_ ✨ repository because its `README.md` (this file) appears on your GitHub profile.
+Smart Mobility & Digital Logistics Platform  
+Connecting people, cities, and opportunities.
 
-Here are some ideas to get you started:
+## Tech Stack
+- Frontend: Vite + React + TypeScript
+- Backend: Supabase (Auth, DB, Edge Functions)
+- Analytics: GA4
+- Hosting: (TBD)
 
-- 🔭 I’m currently working on ...
-- 🌱 I’m currently learning ...
-- 👯 I’m looking to collaborate on ...
-- 🤔 I’m looking for help with ...
-- 💬 Ask me about ...
-- 📫 How to reach me: ...
-- 😄 Pronouns: ...
-- ⚡ Fun fact: ...
--->
+## Environments
+- Development
+- Staging
+- Production
+
+## Setup
+```bash
+npm install
+npm run dev
