@@ -241,8 +241,8 @@ export const MarketplaceAnalytics: React.FC<MarketplaceAnalyticsProps> = ({
                   {((analyticsData.trips.aiNegotiated / analyticsData.trips.total) * 100).toFixed(1)}% of total trips
                 </p>
               </div>
-              <Brain className="h-8 w-8 text-blue-600" />
-            </CardContent>
+              {/* <Brain className="h-8 w-8 text-blue-600" /> */}
+          </CardContent>
         </Card>
 
         <Card>
@@ -256,7 +256,7 @@ export const MarketplaceAnalytics: React.FC<MarketplaceAnalyticsProps> = ({
                 </p>
               </div>
               <Target className="h-8 w-8 text-purple-600" />
-            </CardContent>
+          </CardContent>
         </Card>
 
         <Card>
@@ -268,7 +268,7 @@ export const MarketplaceAnalytics: React.FC<MarketplaceAnalyticsProps> = ({
                 <Progress value={analyticsData.ai.accuracy} className="mt-2 h-2" />
               </div>
               <Zap className="h-8 w-8 text-orange-600" />
-            </CardContent>
+          </CardContent>
         </Card>
       </div>
 
