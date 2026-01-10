@@ -242,6 +242,7 @@ export const MarketplaceAnalytics: React.FC<MarketplaceAnalyticsProps> = ({
                 </p>
               </div>
               {/* <Brain className="h-8 w-8 text-blue-600" /> */}
+            </div>
           </CardContent>
         </Card>
 
@@ -256,6 +257,7 @@ export const MarketplaceAnalytics: React.FC<MarketplaceAnalyticsProps> = ({
                 </p>
               </div>
               <Target className="h-8 w-8 text-purple-600" />
+            </div>
           </CardContent>
         </Card>
 
@@ -268,6 +270,7 @@ export const MarketplaceAnalytics: React.FC<MarketplaceAnalyticsProps> = ({
                 <Progress value={analyticsData.ai.accuracy} className="mt-2 h-2" />
               </div>
               <Zap className="h-8 w-8 text-orange-600" />
+            </div>
           </CardContent>
         </Card>
       </div>
