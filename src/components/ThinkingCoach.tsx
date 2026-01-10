@@ -55,6 +55,20 @@ export function ThinkingCoach() {
   const [reflection, setReflection] = useState('');
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default');
   const [newGoal, setNewGoal] = useState('');
+  const [decisionCalc, setDecisionCalc] = useState({
+    probability: 50,
+    bestCase: 100000,
+    worstCase: -10000,
+    expectedValue: 0,
+    leverageRatio: 1,
+    asymmetricScore: 0
+  });
+  const [compoundCalc, setCompoundCalc] = useState({
+    principal: 1000,
+    rate: 7,
+    years: 30,
+    compound: 0
+  });
 
   // Leverage AI Engine
   const { suggestions: aiPrompts, getSuggestions: getAIPrompts, loading: aiLoading } = useConversationAI();
@@ -82,6 +96,26 @@ export function ThinkingCoach() {
       setNotificationPermission(Notification.permission);
     }
   }, []);
+
+  // Decision Calculator
+  useEffect(() => {
+    const prob = decisionCalc.probability / 100;
+    const expected = (decisionCalc.bestCase * prob) + (decisionCalc.worstCase * (1 - prob));
+    const leverage = decisionCalc.bestCase !== 0 ? Math.abs(decisionCalc.worstCase) / decisionCalc.bestCase : 0;
+    const asymmetric = decisionCalc.bestCase > 0 && decisionCalc.worstCase < 0 ? (decisionCalc.bestCase / Math.abs(decisionCalc.worstCase)) : 0;
+    setDecisionCalc(prev => ({
+      ...prev,
+      expectedValue: expected,
+      leverageRatio: leverage,
+      asymmetricScore: asymmetric
+    }));
+  }, [decisionCalc.probability, decisionCalc.bestCase, decisionCalc.worstCase]);
+
+  // Compound Calculator
+  useEffect(() => {
+    const compound = compoundCalc.principal * Math.pow(1 + compoundCalc.rate / 100, compoundCalc.years);
+    setCompoundCalc(prev => ({ ...prev, compound }));
+  }, [compoundCalc.principal, compoundCalc.rate, compoundCalc.years]);
 
   // Save progress to localStorage
   const saveProgress = (newProgress: ThinkingCoachProgress) => {
@@ -272,7 +306,7 @@ export function ThinkingCoach() {
     const history = [
       { sender: 'user', message: reflection, timestamp: new Date().toISOString() }
     ];
-    getAIPrompts(history, `thinking-coach-day-${currentDay}`);
+    getAIPrompts(history, `thinking-coach-day-${currentDay}-math-${JSON.stringify({decisionCalc, compoundCalc})}`);
   };
 
   const getInspirationIcon = (inspiration: string) => {
@@ -452,6 +486,128 @@ export function ThinkingCoach() {
         </CardContent>
       </Card>
 
+      {/* Decision Calculator */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calculator className="w-5 h-5" />
+            Mathematical Decision Engine
+          </CardTitle>
+          <CardDescription>
+            Calculate expected value, leverage ratios, and asymmetric opportunities using billionaire math
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="text-sm font-medium">Success Probability (%)</label>
+              <input
+                type="number"
+                min="0"
+                max="100"
+                value={decisionCalc.probability}
+                onChange={(e) => setDecisionCalc(prev => ({ ...prev, probability: Number(e.target.value) }))}
+                className="w-full mt-1 p-2 border rounded"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Best Case Outcome</label>
+              <input
+                type="number"
+                value={decisionCalc.bestCase}
+                onChange={(e) => setDecisionCalc(prev => ({ ...prev, bestCase: Number(e.target.value) }))}
+                className="w-full mt-1 p-2 border rounded"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Worst Case Outcome</label>
+              <input
+                type="number"
+                value={decisionCalc.worstCase}
+                onChange={(e) => setDecisionCalc(prev => ({ ...prev, worstCase: Number(e.target.value) }))}
+                className="w-full mt-1 p-2 border rounded"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+            <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+              <div className="flex items-center gap-2 mb-1">
+                <BarChart3 className="w-4 h-4 text-blue-600" />
+                <span className="text-sm font-medium">Expected Value</span>
+              </div>
+              <div className="text-2xl font-bold text-blue-600">{decisionCalc.expectedValue.toFixed(2)}</div>
+            </div>
+            <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+              <div className="flex items-center gap-2 mb-1">
+                <TrendingUp className="w-4 h-4 text-green-600" />
+                <span className="text-sm font-medium">Leverage Ratio</span>
+              </div>
+              <div className="text-2xl font-bold text-green-600">{decisionCalc.leverageRatio.toFixed(2)}x</div>
+            </div>
+            <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+              <div className="flex items-center gap-2 mb-1">
+                <Zap className="w-4 h-4 text-purple-600" />
+                <span className="text-sm font-medium">Asymmetric Score</span>
+              </div>
+              <div className="text-2xl font-bold text-purple-600">{decisionCalc.asymmetricScore.toFixed(2)}x</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Compound Interest Calculator */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <TrendingUp className="w-5 h-5" />
+            Compound Interest Engine
+          </CardTitle>
+          <CardDescription>
+            See how small investments compound into billions over time
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="text-sm font-medium">Initial Investment</label>
+              <input
+                type="number"
+                value={compoundCalc.principal}
+                onChange={(e) => setCompoundCalc(prev => ({ ...prev, principal: Number(e.target.value) }))}
+                className="w-full mt-1 p-2 border rounded"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Annual Return (%)</label>
+              <input
+                type="number"
+                value={compoundCalc.rate}
+                onChange={(e) => setCompoundCalc(prev => ({ ...prev, rate: Number(e.target.value) }))}
+                className="w-full mt-1 p-2 border rounded"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Years</label>
+              <input
+                type="number"
+                value={compoundCalc.years}
+                onChange={(e) => setCompoundCalc(prev => ({ ...prev, years: Number(e.target.value) }))}
+                className="w-full mt-1 p-2 border rounded"
+              />
+            </div>
+          </div>
+          <div className="p-4 bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 rounded-lg">
+            <div className="text-center">
+              <div className="text-sm text-muted-foreground mb-2">Future Value</div>
+              <div className="text-4xl font-bold text-green-600">${compoundCalc.compound.toLocaleString()}</div>
+              <div className="text-sm text-muted-foreground mt-2">
+                {((compoundCalc.compound / compoundCalc.principal - 1) * 100).toFixed(1)}% growth
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Current Day Model */}
       <Card className="border-2 border-primary/20">
         <CardHeader>
@@ -534,7 +690,7 @@ export function ThinkingCoach() {
             </div>
             
             <Textarea
-              placeholder="Deconstruct this model. How does it shift your current systems? What is the asymmetric upside?"
+              placeholder="Deconstruct this model mathematically. Calculate expected value, leverage ratios, and asymmetric opportunities. How does this thinking compound over time?"
               value={reflection}
               onChange={(e) => setReflection(e.target.value)}
               rows={4}
