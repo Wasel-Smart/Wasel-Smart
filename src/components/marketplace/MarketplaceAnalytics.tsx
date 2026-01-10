@@ -20,7 +20,7 @@ import {
   Calendar,
   Filter
 } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart as RechartsPieChart, Cell } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart as RechartsPieChart, Pie, Cell } from 'recharts';
 
 interface AnalyticsData {
   revenue: {
@@ -313,12 +313,12 @@ export const MarketplaceAnalytics: React.FC<MarketplaceAnalyticsProps> = ({
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
                   <RechartsPieChart>
-                    <RechartsPieChart.Pie
+                    <Pie
                       data={analyticsData.categoryBreakdown}
                       cx="50%"
                       cy="50%"
                       labelLine={false}
-                      label={({ category, percentage }) => `${category}: ${percentage}%`}
+                      label={({ category, percentage }: { category: string; percentage: number }) => `${category}: ${percentage}%`}
                       outerRadius={80}
                       fill="#8884d8"
                       dataKey="value"
@@ -326,7 +326,7 @@ export const MarketplaceAnalytics: React.FC<MarketplaceAnalyticsProps> = ({
                       {analyticsData.categoryBreakdown.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
-                    </RechartsPieChart.Pie>
+                    </Pie>
                     <Tooltip />
                   </RechartsPieChart>
                 </ResponsiveContainer>
