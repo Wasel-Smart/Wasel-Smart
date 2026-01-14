@@ -3,15 +3,17 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-// Only throw error if not in demo mode
-const isDemoMode = !supabaseUrl || !supabaseAnonKey;
+import { createMockClient } from './mockSupabase';
+
+// Check for demo mode (explicitly enabled or missing config)
+const isDemoMode = import.meta.env.VITE_DEMO_MODE === 'true' || !supabaseUrl || !supabaseAnonKey;
 
 // Export a mock client in demo mode, real client in production
 let supabaseClient: any;
 
 if (isDemoMode) {
-  console.warn('Supabase not configured - running in demo mode');
-  supabaseClient = null;
+  console.log('Using Mock Supabase Client (Demo Mode)');
+  supabaseClient = createMockClient();
 } else {
   supabaseClient = createClient(supabaseUrl!, supabaseAnonKey!, {
     auth: {

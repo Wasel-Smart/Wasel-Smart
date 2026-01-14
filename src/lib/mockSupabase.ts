@@ -1,4 +1,4 @@
-import { details } from "framer-motion/client";
+// Mock Supabase Client for local development and testing
 
 // Types for Mock Data
 interface MockUser {
