@@ -159,6 +159,14 @@ class MockSupabaseClient {
     private notifyListeners(event: string, session: any) {
         this.authListeners.forEach(cb => cb(event, session));
     }
+
+    resetDatabase() {
+        localStorage.removeItem(STORAGE_KEY_DB);
+        localStorage.removeItem(STORAGE_KEY_USERS);
+        localStorage.removeItem(STORAGE_KEY_SESSION);
+        this.initializeDatabase();
+        window.location.reload();
+    }
 }
 
 class MockQueryBuilder {
@@ -166,6 +174,8 @@ class MockQueryBuilder {
     private filters: any[] = [];
     private _single = false;
     private _select = '*';
+    private _order: { column: string, ascending: boolean } | null = null;
+    private _limit: number | null = null;
 
     constructor(table: string) {
         this.table = table;
@@ -186,6 +196,37 @@ class MockQueryBuilder {
         return this;
     }
 
+    order(column: string, { ascending = true } = {}) {
+        this._order = { column, ascending };
+        return this;
+    }
+
+    limit(count: number) {
+        this._limit = count;
+        return this;
+    }
+
+    ilike(column: string, pattern: string) {
+        this.filters.push({ type: 'ilike', column, value: pattern.replace(/%/g, '') });
+        return this;
+    }
+
+    or(filterStr: string) {
+        // Simple mock implementation of OR: sender_id.eq.xxx,recipient_id.eq.xxx
+        const parts = filterStr.split(',');
+        const orFilters = parts.map(p => {
+            const [col, op, val] = p.split('.');
+            return { column: col, value: val };
+        });
+        this.filters.push({ type: 'or', filters: orFilters });
+        return this;
+    }
+
+    gte(column: string, value: any) {
+        this.filters.push({ type: 'gte', column, value });
+        return this;
+    }
+
     async insert(data: any | any[]) {
         console.log(`Mock DB Insert into ${this.table}:`, data);
         const db = this.getDb();
@@ -199,7 +240,27 @@ class MockQueryBuilder {
         });
 
         this.saveDb(db);
-        return { data: items, error: null };
+        return { data: Array.isArray(data) ? items : items[0], error: null };
+    }
+
+    async upsert(data: any | any[]) {
+        console.log(`Mock DB Upsert into ${this.table}:`, data);
+        const db = this.getDb();
+        if (!db[this.table]) db[this.table] = [];
+
+        const items = Array.isArray(data) ? data : [data];
+        items.forEach(item => {
+            const index = db[this.table].findIndex((r: any) => r.id === item.id);
+            if (index !== -1) {
+                db[this.table][index] = { ...db[this.table][index], ...item };
+            } else {
+                if (!item.id) item.id = Math.random().toString(36).substr(2, 9);
+                db[this.table].push(item);
+            }
+        });
+
+        this.saveDb(db);
+        return { data: Array.isArray(data) ? items : items[0], error: null };
     }
 
     async update(data: any) {
@@ -232,6 +293,21 @@ class MockQueryBuilder {
         // Apply filters
         rows = rows.filter((row: any) => this.matchesFilters(row));
 
+        // Apply ordering
+        if (this._order) {
+            const { column, ascending } = this._order;
+            rows.sort((a, b) => {
+                if (a[column] < b[column]) return ascending ? -1 : 1;
+                if (a[column] > b[column]) return ascending ? 1 : -1;
+                return 0;
+            });
+        }
+
+        // Apply limit
+        if (this._limit !== null) {
+            rows = rows.slice(0, this._limit);
+        }
+
         let result;
         if (this._single) {
             result = rows.length > 0 ? rows[0] : null;
@@ -244,12 +320,81 @@ class MockQueryBuilder {
             result = rows;
         }
 
+        // Apply simulated joins
+        if (result && this._select !== '*') {
+            result = this.applyJoins(result, this._select);
+        }
+
         resolve({ data: result, error: null });
+    }
+
+    private applyJoins(data: any | any[], selectStr: string) {
+        const isArray = Array.isArray(data);
+        const rows = isArray ? data : [data];
+
+        // Very basic parser for joins: "*, trip:trips(*, driver:profiles(*))"
+        // This is a simplified mock implementation
+        const processedRows = rows.map(row => {
+            const newRow = { ...row };
+
+            // Handle trip:trips join
+            if (selectStr.includes('trip:trips') || selectStr.includes('trips(')) {
+                const tripId = row.trip_id;
+                if (tripId) {
+                    const db = this.getDb();
+                    const trip = (db['trips'] || []).find((t: any) => t.id === tripId);
+                    if (trip) {
+                        newRow.trip = { ...trip };
+                        // Handle driver join inside trip
+                        if (selectStr.includes('driver:profiles') || selectStr.includes('driver(')) {
+                            const driver = (db['profiles'] || []).find((p: any) => p.id === trip.driver_id);
+                            if (driver) newRow.trip.driver = driver;
+                        }
+                    }
+                }
+            }
+
+            // Handle driver:profiles join directly
+            if ((selectStr.includes('driver:profiles') || selectStr.includes('driver(')) && !newRow.trip) {
+                const driverId = row.driver_id;
+                if (driverId) {
+                    const db = this.getDb();
+                    const driver = (db['profiles'] || []).find((p: any) => p.id === driverId);
+                    if (driver) newRow.driver = driver;
+                }
+            }
+
+            // Handle passenger:profiles join
+            if (selectStr.includes('passenger:profiles') || selectStr.includes('passenger(')) {
+                const passengerId = row.passenger_id;
+                if (passengerId) {
+                    const db = this.getDb();
+                    const passenger = (db['profiles'] || []).find((p: any) => p.id === passengerId);
+                    if (passenger) newRow.passenger = passenger;
+                }
+            }
+
+            // Handle profiles join for messages
+            if (this.table === 'messages' && (selectStr.includes('sender') || selectStr.includes('recipient'))) {
+                const db = this.getDb();
+                if (row.sender_id) newRow.sender = (db['profiles'] || []).find((p: any) => p.id === row.sender_id);
+                if (row.recipient_id) newRow.recipient = (db['profiles'] || []).find((p: any) => p.id === row.recipient_id);
+            }
+
+            return newRow;
+        });
+
+        return isArray ? processedRows : processedRows[0];
     }
 
     private matchesFilters(row: any) {
         return this.filters.every(filter => {
             if (filter.type === 'eq') return row[filter.column] === filter.value;
+            if (filter.type === 'gte') return row[filter.column] >= filter.value;
+            if (filter.type === 'ilike') return String(row[filter.column] || '').toLowerCase().includes(filter.value.toLowerCase());
+            if (filter.type === 'or') {
+                return filter.filters.some((f: any) => row[f.column] === f.value);
+            }
             return true;
         });
     }

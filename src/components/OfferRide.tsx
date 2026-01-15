@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Locate, CalendarClock, Timer, UsersRound, CarFront, CirclePlus, CircleX, Radar, Scale, Info } from 'lucide-react';
+import { Locate, CalendarClock, Timer, UsersRound, CarFront, CirclePlus, CircleX, Radar, Scale, Info, CircleDollarSign, PackageCheck, TrendingUp, Shield, Truck as TruckIcon } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
 import { Button } from './ui/button';

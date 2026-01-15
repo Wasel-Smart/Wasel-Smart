@@ -6,6 +6,7 @@
  */
 
 import { motion, AnimatePresence } from 'framer-motion';
+import { VisualRoute } from '../VisualRoute';
 import {
   Car,
   Package,
@@ -29,7 +30,8 @@ import {
   Brain,
   ArrowRight,
   Lightbulb,
-  Sparkles
+  Sparkles,
+  Loader2
 } from 'lucide-react';
 import { PremiumCard, PremiumCardContent } from './PremiumCard';
 import { Button } from '../ui/button';
@@ -37,14 +39,19 @@ import { Badge } from '../ui/badge';
 import { mentalModels } from '../../data/mentalModels';
 import { useConversationAI } from '../../hooks/useAIFeatures';
 import { useEffect, useState } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
+import { bookingsAPI } from '../../services/api';
 
 interface EnhancedDashboardProps {
   onNavigate: (page: string) => void;
 }
 
 export function EnhancedDashboard({ onNavigate }: EnhancedDashboardProps) {
+  const { user, profile, loading: authLoading } = useAuth();
   const [currentModel, setCurrentModel] = useState(mentalModels[0]);
   const { suggestions: feedback, getSuggestions, loading: feedbackLoading } = useConversationAI();
+  const [recentTrips, setRecentTrips] = useState<any[]>([]);
+  const [loadingTrips, setLoadingTrips] = useState(true);
 
   useEffect(() => {
     // Systems Thinking: Auto-select model based on day of month for diversity
@@ -54,17 +61,62 @@ export function EnhancedDashboard({ onNavigate }: EnhancedDashboardProps) {
 
     // Exponential Feedback: Analyze current state vs mental model
     const history = [
-      { sender: 'system', message: `Current mental model: ${model.title}. User has completed 147 trips.`, timestamp: new Date().toISOString() }
+      { sender: 'system', message: `Current mental model: ${model.title}. User: ${profile?.full_name}. Trips: ${profile?.total_trips || 0}`, timestamp: new Date().toISOString() }
     ];
     getSuggestions(history, 'dashboard-thinking-nudge');
-  }, []);
+
+    // Fetch recent trips
+    const fetchRecent = async () => {
+      try {
+        const { bookings } = await bookingsAPI.getUserBookings();
+        setRecentTrips(bookings.slice(0, 3));
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoadingTrips(false);
+      }
+    };
+    fetchRecent();
+  }, [profile]);
 
   const stats = [
-    { label: 'System Growth', value: '147', change: '+12%', icon: Car, color: 'from-teal-500 to-teal-700' },
-    { label: 'This Month', value: 'AED 1,240', change: '+8%', icon: DollarSign, color: 'from-green-500 to-emerald-600' },
-    { label: 'Avg Rating', value: '4.9', change: '+0.2', icon: Star, color: 'from-yellow-500 to-amber-600' },
-    { label: 'Saved CO₂', value: '24kg', change: '+15%', icon: Zap, color: 'from-teal-400 to-cyan-500' },
+    {
+      label: 'System Growth',
+      value: (profile?.trips_as_driver || 0) + (profile?.trips_as_passenger || 0),
+      change: '+12%',
+      icon: Car,
+      color: 'from-teal-500 to-teal-700'
+    },
+    {
+      label: 'Wallet Balance',
+      value: `AED ${profile?.wallet_balance || 0}`,
+      change: '+8%',
+      icon: DollarSign,
+      color: 'from-green-500 to-emerald-600'
+    },
+    {
+      label: 'Avg Rating',
+      value: profile?.rating_as_driver || profile?.rating_as_passenger || '5.0',
+      change: '+0.2',
+      icon: Star,
+      color: 'from-yellow-500 to-amber-600'
+    },
+    {
+      label: 'Saved CO₂',
+      value: `${((profile?.trips_as_passenger || 0) * 1.2).toFixed(1)}kg`,
+      change: '+15%',
+      icon: Zap,
+      color: 'from-teal-400 to-cyan-500'
+    },
   ];
+
+  if (authLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Loader2 className="w-12 h-12 animate-spin text-teal-600" />
+      </div>
+    );
+  }
 
   const services = [
     { id: 'delivery', name: 'Delivery', icon: Package, color: 'from-blue-500 to-cyan-500' },
@@ -77,25 +129,6 @@ export function EnhancedDashboard({ onNavigate }: EnhancedDashboardProps) {
     { id: 'rentals', name: 'Rentals', icon: Key, color: 'from-indigo-500 to-purple-600' },
     { id: 'shuttles', name: 'Shuttles', icon: Bus, color: 'from-blue-600 to-indigo-700' },
     { id: 'luxury', name: 'Luxury', icon: Crown, color: 'from-amber-500 to-yellow-600' }
-  ];
-
-  const recentTrips = [
-    {
-      id: '1',
-      from: 'Dubai Marina',
-      to: 'Dubai Mall',
-      date: '2 hours ago',
-      fare: 45.50,
-      status: 'completed',
-    },
-    {
-      id: '2',
-      from: 'Business Bay',
-      to: 'JBR Beach',
-      date: 'Yesterday',
-      fare: 38.00,
-      status: 'completed',
-    },
   ];
 
   const getRouteForService = (serviceId: string) => {
@@ -175,17 +208,17 @@ export function EnhancedDashboard({ onNavigate }: EnhancedDashboardProps) {
             transition={{ delay: 0.3 }}
             className="flex flex-wrap gap-3"
           >
-            <Button 
-              size="lg" 
+            <Button
+              size="lg"
               className="bg-white text-[#008080] hover:bg-white/90 font-bold border-0 shadow-lg"
               onClick={() => onNavigate('find-ride')}
             >
               <Car className="w-5 h-5 mr-2" />
               Book Ride
             </Button>
-            <Button 
-              size="lg" 
-              variant="outline" 
+            <Button
+              size="lg"
+              variant="outline"
               className="border-white/30 bg-white/10 backdrop-blur-xl text-white hover:bg-white/20 font-medium"
               onClick={() => onNavigate('scheduled-trips')}
             >
@@ -305,7 +338,7 @@ export function EnhancedDashboard({ onNavigate }: EnhancedDashboardProps) {
           <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Services</h2>
           <Button variant="ghost" className="text-[#008080]">View All</Button>
         </div>
-        
+
         <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-10 gap-4">
           {services.map((service, index) => (
             <motion.div
@@ -346,45 +379,56 @@ export function EnhancedDashboard({ onNavigate }: EnhancedDashboardProps) {
         </div>
 
         <div className="space-y-3">
-          {recentTrips.map((trip, index) => (
-            <motion.div
-              key={trip.id}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.8 + index * 0.1 }}
-            >
-              <PremiumCard hover onClick={() => onNavigate('my-trips')} className="border-0 shadow-md bg-white/90 backdrop-blur-sm dark:bg-slate-800/90">
-                <PremiumCardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-gradient-to-br from-[#008080] to-[#607D4B] rounded-2xl flex items-center justify-center text-white shadow-md">
-                        <MapPin className="w-6 h-6" />
-                      </div>
-                      
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-semibold text-gray-800 dark:text-white">{trip.from}</span>
-                          <span className="text-muted-foreground">→</span>
-                          <span className="font-semibold text-gray-800 dark:text-white">{trip.to}</span>
+          {loadingTrips ? (
+            <div className="flex justify-center p-8">
+              <Loader2 className="w-6 h-6 animate-spin text-teal-600" />
+            </div>
+          ) : recentTrips.length === 0 ? (
+            <div className="p-12 text-center bg-white/50 backdrop-blur-sm rounded-3xl border border-dashed border-gray-300 dark:border-gray-700">
+              <Car className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-500 font-medium">No trips yet. Start your journey today!</p>
+              <Button variant="link" className="text-teal-600 mt-2" onClick={() => onNavigate('find-ride')}>Find Your First Ride</Button>
+            </div>
+          ) : (
+            recentTrips.map((booking, index) => (
+              <motion.div
+                key={booking.id}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.8 + index * 0.1 }}
+              >
+                <PremiumCard hover onClick={() => onNavigate('my-trips')} className="border-0 shadow-md bg-white/90 backdrop-blur-sm dark:bg-slate-800/90">
+                  <PremiumCardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-gradient-to-br from-[#008080] to-[#607D4B] rounded-2xl flex items-center justify-center text-white shadow-md">
+                          <MapPin className="w-6 h-6" />
                         </div>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Clock className="w-4 h-4" />
-                          {trip.date}
-                        </div>
-                      </div>
-                    </div>
 
-                    <div className="text-right">
-                      <p className="text-xl font-bold text-[#008080]">AED {trip.fare.toFixed(2)}</p>
-                      <Badge variant="outline" className="bg-green-50 dark:bg-green-950 text-green-700">
-                        Completed
-                      </Badge>
+                        <div>
+                          <VisualRoute from={booking.trip?.from_location} to={booking.trip?.to_location} compact className="mb-1" />
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground pl-8">
+                            <Clock className="w-4 h-4" />
+                            {booking.trip?.departure_date} • {booking.trip?.departure_time}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="text-right">
+                        <p className="text-lg font-extrabold text-[#008080]">AED {booking.total_price}</p>
+                        <Badge variant="outline" className={`
+                            ${booking.status === 'completed' ? 'bg-green-50 text-green-700' : 'bg-blue-50 text-blue-700'} 
+                            dark:bg-slate-900 border-0 pointer-events-none capitalize
+                        `}>
+                          {booking.status}
+                        </Badge>
+                      </div>
                     </div>
-                  </div>
-                </PremiumCardContent>
-              </PremiumCard>
-            </motion.div>
-          ))}
+                  </PremiumCardContent>
+                </PremiumCard>
+              </motion.div>
+            ))
+          )}
         </div>
       </motion.div>
     </div>

@@ -1,6 +1,7 @@
 import * as React from "react";
 import { Slot } from "@radix-ui/react-slot@1.1.2";
 import { cva, type VariantProps } from "class-variance-authority@0.7.1";
+import { motion } from "framer-motion";
 
 import { cn } from "./utils";
 
@@ -17,7 +18,7 @@ const buttonVariants = cva(
         secondary:
           "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         ghost:
-          "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
+          "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50 hover:scale-105",
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
@@ -37,17 +38,19 @@ const buttonVariants = cva(
 const Button = React.forwardRef<
   HTMLButtonElement,
   React.ComponentProps<"button"> &
-    VariantProps<typeof buttonVariants> & {
-      asChild?: boolean;
-    }
+  VariantProps<typeof buttonVariants> & {
+    asChild?: boolean;
+  }
 >(({ className, variant, size, asChild = false, ...props }, ref) => {
-  const Comp = asChild ? Slot : "button";
+  const Comp = asChild ? Slot : motion.button;
+  const motionProps = asChild ? {} : { whileTap: { scale: 0.95 } };
 
   return (
     <Comp
-      ref={ref}
+      ref={ref as any}
       data-slot="button"
       className={cn(buttonVariants({ variant, size, className }))}
+      {...motionProps}
       {...props}
     />
   );

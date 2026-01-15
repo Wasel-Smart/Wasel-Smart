@@ -8,7 +8,9 @@ import { AIProvider } from './contexts/AIContext';
 import { Toaster } from './components/ui/sonner';
 import { useKeyboardNavigation, SkipLink } from './components/ui/accessibility';
 import { SkeletonScreen } from './components/ui/skeleton-screen';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { isDemoMode } from './lib/supabase';
+import { seedDatabase } from './lib/seedData';
 import { AuthPage } from './components/AuthPage';
 import { LandingPage } from './components/LandingPage';
 import { FindRide } from './components/FindRide';
@@ -74,6 +76,7 @@ import { CarRentals } from './components/CarRentals';
 import { ShuttleService } from './components/ShuttleService';
 import { LuxuryRides } from './components/LuxuryRides';
 import { ThinkingCoach } from './components/ThinkingCoach';
+import { MobileNav } from './components/MobileNav';
 
 function AppContent() {
   const { user, loading } = useAuth();
@@ -84,6 +87,18 @@ function AppContent() {
 
   // Enable keyboard navigation
   useKeyboardNavigation();
+
+  // Seed database if empty and in demo mode
+  useEffect(() => {
+    if (isDemoMode) {
+      const hasSeeded = localStorage.getItem('wasel_demo_seeded');
+      if (!hasSeeded) {
+        seedDatabase().then(() => {
+          localStorage.setItem('wasel_demo_seeded', 'true');
+        });
+      }
+    }
+  }, []);
 
   // Show loading state while checking authentication
   if (loading) {
@@ -281,13 +296,18 @@ function AppContent() {
       {/* Voice Assistant */}
       <VoiceAssistant />
 
-      {/* Floating Action Button */}
-      <FloatingActionButton
-        onBookRide={() => setCurrentPage('find-ride')}
-        onBookDelivery={() => setCurrentPage('package-delivery')}
-        onScheduleTrip={() => setCurrentPage('scheduled-trips')}
-        onCorporateBooking={() => setCurrentPage('business')}
-      />
+      {/* Floating Action Button - Hide on mobile if MobileNav is showing to avoid clutter */}
+      <div className="hidden md:block">
+        <FloatingActionButton
+          onBookRide={() => setCurrentPage('find-ride')}
+          onBookDelivery={() => setCurrentPage('package-delivery')}
+          onScheduleTrip={() => setCurrentPage('scheduled-trips')}
+          onCorporateBooking={() => setCurrentPage('business')}
+        />
+      </div>
+
+      {/* Mobile Navigation */}
+      <MobileNav currentPage={currentPage} onNavigate={setCurrentPage} />
 
       <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
         {/* Sidebar */}

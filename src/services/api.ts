@@ -49,7 +49,7 @@ const mockAPI = {
   async getAuthDetails() {
     return { token: 'mock-token', userId: 'user-1' };
   },
-  
+
   authAPI: {
     async signUp(email: string, password: string, fullName: string) {
       const { data, error } = await supabase.auth.signUp({
@@ -83,31 +83,31 @@ const mockAPI = {
     async getProfile() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return { profile: null };
-      
+
       // Try to get profile from profiles table
       const { data: profile } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', user.id)
         .single();
-      
+
       return { profile: profile || { id: user.id, email: user.email, ...user.user_metadata } };
     },
     async updateProfile(updates: { full_name?: string; phone?: string; avatar_url?: string }) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
-      
+
       const { data, error } = await supabase
         .from('profiles')
         .upsert({ id: user.id, ...updates, updated_at: new Date().toISOString() })
         .select()
         .single();
-      
+
       if (error) throw error;
       return { success: true, profile: data };
     }
   },
-  
+
   tripsAPI: {
     async createTrip(tripData: {
       from: string;
@@ -121,7 +121,7 @@ const mockAPI = {
     }) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Must be logged in to create trips');
-      
+
       const { data, error } = await supabase
         .from('trips')
         .insert({
@@ -132,7 +132,7 @@ const mockAPI = {
         })
         .select()
         .single();
-      
+
       if (error) throw error;
       return { trip: data };
     },
@@ -144,15 +144,15 @@ const mockAPI = {
           driver:profiles!trips_driver_id_fork (id, full_name, rating, trips_completed, avatar_url)
         `)
         .eq('status', 'active');
-      
+
       if (from) query = query.ilike('from', `%${from}%`);
       if (to) query = query.ilike('to', `%${to}%`);
       if (date) query = query.eq('departure_date', date);
       if (seats) query = query.gte('available_seats', seats);
-      
+
       const { data, error } = await query.order('departure_date', { ascending: true });
       if (error) throw error;
-      
+
       return { trips: data || [] };
     },
     async getTripById(tripId: string) {
@@ -164,22 +164,22 @@ const mockAPI = {
         `)
         .eq('id', tripId)
         .single();
-      
+
       if (error) throw error;
       return { trip: data };
     },
     async getDriverTrips(driverId?: string) {
       const { data: { user } } = await supabase.auth.getUser();
       const targetDriverId = driverId || user?.id;
-      
+
       if (!targetDriverId) throw new Error('Driver ID required');
-      
+
       const { data, error } = await supabase
         .from('trips')
         .select('*')
         .eq('driver_id', targetDriverId)
         .order('created_at', { ascending: false });
-      
+
       if (error) throw error;
       return { trips: data || [] };
     },
@@ -202,37 +202,37 @@ const mockAPI = {
         package: { base: 15, per_km: 2 },
         rental: { base: 100, per_day: 200 }
       };
-      
+
       const rates = pricing[type as keyof typeof pricing] || pricing.passenger;
       const distance = distance_km || 0;
       const price = base_price || (rates.base + (rates.per_km || 0) * distance);
-      
-      return { 
+
+      return {
         price: Math.round(price * 100) / 100,
-        breakdown: { 
-          base: rates.base, 
+        breakdown: {
+          base: rates.base,
           distance: distance * (rates.per_km || 0),
           total: price
         }
       };
     }
   },
-  
+
   bookingsAPI: {
     async createBooking(tripId: string, seatsRequested: number, pickup?: string, dropoff?: string) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Must be logged in to book');
-      
+
       // Get trip details
       const { data: trip } = await supabase
         .from('trips')
         .select('available_seats, price_per_seat')
         .eq('id', tripId)
         .single();
-      
+
       if (!trip) throw new Error('Trip not found');
       if (trip.available_seats < seatsRequested) throw new Error('Not enough seats available');
-      
+
       const { data, error } = await supabase
         .from('bookings')
         .insert({
@@ -247,14 +247,14 @@ const mockAPI = {
         })
         .select()
         .single();
-      
+
       if (error) throw error;
       return { booking: data };
     },
     async getUserBookings() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Must be logged in');
-      
+
       const { data, error } = await supabase
         .from('bookings')
         .select(`
@@ -266,7 +266,7 @@ const mockAPI = {
         `)
         .eq('passenger_id', user.id)
         .order('created_at', { ascending: false });
-      
+
       if (error) throw error;
       return { bookings: data || [] };
     },
@@ -279,7 +279,7 @@ const mockAPI = {
         `)
         .eq('trip_id', tripId)
         .order('created_at', { ascending: true });
-      
+
       if (error) throw error;
       return { bookings: data || [] };
     },
@@ -290,19 +290,19 @@ const mockAPI = {
         .eq('id', bookingId)
         .select()
         .single();
-      
+
       if (error) throw error;
       return { booking: data };
     }
   },
-  
+
   messagesAPI: {
     async sendMessage(recipientId: string, tripId: string, content: string) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Must be logged in to send messages');
-      
+
       const conversationId = [user.id, recipientId].sort().join('_');
-      
+
       const { data, error } = await supabase
         .from('messages')
         .insert({
@@ -315,14 +315,14 @@ const mockAPI = {
         })
         .select()
         .single();
-      
+
       if (error) throw error;
       return { message: data };
     },
     async getConversations() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Must be logged in');
-      
+
       // Get unique conversation IDs where user is participant
       const { data: messages, error } = await supabase
         .from('messages')
@@ -333,9 +333,9 @@ const mockAPI = {
         `)
         .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
         .order('created_at', { ascending: false });
-      
+
       if (error) throw error;
-      
+
       // Group by conversation
       const conversations = new Map();
       messages?.forEach(msg => {
@@ -350,15 +350,15 @@ const mockAPI = {
           });
         }
       });
-      
+
       return { conversations: Array.from(conversations.values()) };
     },
     async getConversationWithUser(otherUserId: string) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Must be logged in');
-      
+
       const conversationId = [user.id, otherUserId].sort().join('_');
-      
+
       const { data, error } = await supabase
         .from('messages')
         .select(`
@@ -368,55 +368,55 @@ const mockAPI = {
         `)
         .eq('conversation_id', conversationId)
         .order('created_at', { ascending: true });
-      
+
       if (error) throw error;
       return { messages: data || [] };
     }
   },
-  
+
   walletAPI: {
     async getWallet() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Must be logged in');
-      
+
       const { data, error } = await supabase
         .from('wallets')
         .select('*')
         .eq('user_id', user.id)
         .single();
-      
+
       if (error && error.code !== 'PGRST116') throw error;
-      
-      return { 
-        wallet: data || { 
-          user_id: user.id, 
-          balance: 0, 
+
+      return {
+        wallet: data || {
+          user_id: user.id,
+          balance: 0,
           currency: 'AED',
           created_at: new Date().toISOString()
-        } 
+        }
       };
     },
     async addFunds(amount: number) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Must be logged in');
-      
+
       // First get current balance
       const { wallet } = await this.getWallet();
       const newBalance = wallet.balance + amount;
-      
+
       const { data, error } = await supabase
         .from('wallets')
-        .upsert({ 
-          user_id: user.id, 
+        .upsert({
+          user_id: user.id,
           balance: newBalance,
           currency: wallet.currency || 'AED',
           updated_at: new Date().toISOString()
         })
         .select()
         .single();
-      
+
       if (error) throw error;
-      
+
       // Record transaction
       await supabase.from('transactions').insert({
         wallet_id: data.id,
@@ -425,23 +425,23 @@ const mockAPI = {
         status: 'completed',
         created_at: new Date().toISOString()
       });
-      
+
       return { success: true, new_balance: newBalance };
     }
   },
-  
+
   notificationsAPI: {
     async getNotifications() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Must be logged in');
-      
+
       const { data, error } = await supabase
         .from('notifications')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(50);
-      
+
       if (error) throw error;
       return { notifications: data || [] };
     },
@@ -450,28 +450,28 @@ const mockAPI = {
         .from('notifications')
         .update({ read_at: new Date().toISOString() })
         .eq('id', notificationId);
-      
+
       if (error) throw error;
       return { success: true };
     }
   },
-  
+
   referralAPI: {
     async getReferralCode() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Must be logged in');
-      
+
       const { data, error } = await supabase
         .from('referrals')
         .select('*, earnings:transactions(amount)')
         .eq('referrer_id', user.id)
         .single();
-      
+
       if (error && error.code !== 'PGRST116') throw error;
-      
+
       const totalEarnings = data?.earnings?.reduce((sum: number, t: { amount: number }) => sum + t.amount, 0) || 0;
-      
-      return { 
+
+      return {
         referral_code: data?.code || `REF${user.id.slice(0, 6).toUpperCase()}`,
         earnings: totalEarnings
       };
@@ -479,26 +479,26 @@ const mockAPI = {
     async applyReferralCode(code: string) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Must be logged in');
-      
+
       // Find the referrer
       const { data: referral } = await supabase
         .from('referrals')
         .select('*')
         .eq('code', code)
         .single();
-      
+
       if (!referral) throw new Error('Invalid referral code');
       if (referral.referrer_id === user.id) throw new Error('Cannot use your own referral code');
-      
+
       // Check if user already used a referral
       const { data: existing } = await supabase
         .from('referrals')
         .select('*')
         .eq('referred_user_id', user.id)
         .single();
-      
+
       if (existing) throw new Error('Referral code already used');
-      
+
       // Record the referral
       const { error } = await supabase
         .from('referrals')
@@ -510,137 +510,16 @@ const mockAPI = {
           bonus_amount: 25,
           created_at: new Date().toISOString()
         });
-      
+
       if (error) throw error;
-      
+
       return { success: true, bonus: 25 };
     }
   }
 };
 
-// Demo mode fallback API functions
-const demoMockAPI = {
-  async getAuthDetails() {
-    return { token: 'mock-token', userId: 'user-1' };
-  },
-  
-  authAPI: {
-    async signUp() {
-      return { success: true, user: { id: '1', email: 'demo@wassel.com' } };
-    },
-    async signIn() {
-      return { user: { id: '1', email: 'demo@wassel.com' } };
-    },
-    async signOut() {
-      return {};
-    },
-    async getSession() {
-      return { session: { user: { id: '1' }, access_token: 'mock-token' } };
-    },
-    async getProfile() {
-      return { profile: { id: '1', full_name: 'Demo User', email: 'demo@wassel.com' } };
-    },
-    async updateProfile(updates: any) {
-      return { success: true, profile: { ...updates } };
-    }
-  },
-  
-  tripsAPI: {
-    async createTrip(tripData: any) {
-      const newTrip = { ...tripData, id: Date.now().toString(), status: 'active' };
-      mockTrips.push(newTrip as any);
-      return { trip: newTrip };
-    },
-    async searchTrips(from?: string, to?: string, date?: string, seats?: number) {
-      let results = [...mockTrips];
-      if (from) results = results.filter(t => t.from.toLowerCase().includes(from.toLowerCase()));
-      if (to) results = results.filter(t => t.to.toLowerCase().includes(to.toLowerCase()));
-      if (date) results = results.filter(t => t.departure_date >= date);
-      if (seats) results = results.filter(t => t.available_seats >= seats);
-      return { trips: results };
-    },
-    async getTripById(tripId: string) {
-      const trip = mockTrips.find(t => t.id === tripId);
-      return { trip };
-    },
-    async getDriverTrips() {
-      return { trips: mockTrips.filter(t => t.driver_id === 'driver1') };
-    },
-    async calculatePrice(type: string, weight?: number, distance_km?: number, base_price?: number) {
-      return { price: base_price || 50, breakdown: { base: 40, fees: 10 } };
-    }
-  },
-  
-  bookingsAPI: {
-    async createBooking(tripId: string, seatsRequested: number, pickup?: string, dropoff?: string) {
-      const booking = {
-        id: Date.now().toString(),
-        trip_id: tripId,
-        user_id: 'user-1',
-        seats_requested: seatsRequested,
-        status: 'confirmed',
-        pickup_stop: pickup,
-        dropoff_stop: dropoff,
-        created_at: new Date().toISOString()
-      };
-      mockBookings.push(booking as any);
-      return { booking };
-    },
-    async getUserBookings() {
-      return { bookings: mockBookings };
-    },
-    async getTripBookings(tripId: string) {
-      return { bookings: mockBookings.filter(b => b.trip_id === tripId) };
-    },
-    async updateBookingStatus(bookingId: string, status: string) {
-      const booking = mockBookings.find(b => b.id === bookingId);
-      if (booking) booking.status = status;
-      return { booking };
-    }
-  },
-  
-  messagesAPI: {
-    async sendMessage(recipientId: string, tripId: string, content: string) {
-      return { message: { id: Date.now().toString(), content, sent_at: new Date().toISOString() } };
-    },
-    async getConversations() {
-      return { conversations: [] };
-    },
-    async getConversationWithUser(otherUserId: string) {
-      return { messages: [] };
-    }
-  },
-  
-  walletAPI: {
-    async getWallet() {
-      return { wallet: { balance: 150.00, currency: 'AED' } };
-    },
-    async addFunds(amount: number) {
-      return { success: true, new_balance: 150 + amount };
-    }
-  },
-  
-  notificationsAPI: {
-    async getNotifications() {
-      return { notifications: [{ id: '1', title: 'Welcome!', message: 'Demo mode active', read: false }] };
-    },
-    async markAsRead(notificationId: string) {
-      return { success: true };
-    }
-  },
-  
-  referralAPI: {
-    async getReferralCode() {
-      return { referral_code: 'DEMO123', earnings: 25.00 };
-    },
-    async applyReferralCode(code: string) {
-      return { success: true, bonus: 10.00 };
-    }
-  }
-};
-
-// Use real or demo APIs based on Supabase configuration
-const activeAPI = DEMO_MODE ? demoMockAPI : mockAPI;
+// Use unified API that works with both real Supabase and MockSupabaseClient
+const activeAPI = mockAPI;
 
 // Export APIs
 export const authAPI = activeAPI.authAPI;
