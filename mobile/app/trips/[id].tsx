@@ -105,7 +105,10 @@ export default function TripDetails() {
 
                 {/* Driver Info */}
                 <View style={styles.driverSection}>
-                    <View style={styles.driverHeader}>
+                    <TouchableOpacity
+                        style={styles.driverHeader}
+                        onPress={() => router.push(`/profile/${trip.driver?.id}`)}
+                    >
                         <View style={styles.avatar}>
                             <Text style={styles.avatarText}>{trip.driver?.full_name?.charAt(0)}</Text>
                         </View>
@@ -121,7 +124,7 @@ export default function TripDetails() {
                                 <MessageCircle size={20} color="#3b82f6" />
                             </TouchableOpacity>
                         )}
-                    </View>
+                    </TouchableOpacity>
                 </View>
 
                 {/* Vehicle Info */}

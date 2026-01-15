@@ -194,7 +194,7 @@ const mockAPI = {
       if (error) throw error;
       return { trip: data };
     },
-    async calculatePrice(type: string, weight?: number, distance_km?: number, base_price?: number) {
+    async calculatePrice(type: string, distance_km?: number, base_price?: number) {
       // Pricing logic for different service types
       const pricing = {
         passenger: { base: 10, per_km: 1.5 },
@@ -205,13 +205,14 @@ const mockAPI = {
 
       const rates = pricing[type as keyof typeof pricing] || pricing.passenger;
       const distance = distance_km || 0;
-      const price = base_price || (rates.base + (rates.per_km || 0) * distance);
+      const perKmRate = 'per_km' in rates ? rates.per_km : 0;
+      const price = base_price || (rates.base + perKmRate * distance);
 
       return {
         price: Math.round(price * 100) / 100,
         breakdown: {
           base: rates.base,
-          distance: distance * (rates.per_km || 0),
+          distance: distance * perKmRate,
           total: price
         }
       };
@@ -338,7 +339,7 @@ const mockAPI = {
 
       // Group by conversation
       const conversations = new Map();
-      messages?.forEach(msg => {
+      messages?.forEach((msg: any) => {
         const otherUser = msg.sender_id === user.id ? msg.recipient : msg.sender;
         const convId = [user.id, otherUser?.id].sort().join('_');
         if (!conversations.has(convId)) {
@@ -427,6 +428,27 @@ const mockAPI = {
       });
 
       return { success: true, new_balance: newBalance };
+    },
+    async getTransactions() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Must be logged in');
+
+      const { data: wallet } = await supabase
+        .from('wallets')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+      
+      if (!wallet) return { transactions: [] };
+
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('wallet_id', wallet.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return { transactions: data || [] };
     }
   },
 

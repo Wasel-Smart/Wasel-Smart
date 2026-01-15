@@ -1,3 +1,4 @@
+
 import { PlatformUtils } from '../utils';
 import { Alert } from 'react-native';
 import { initStripe, useStripe, presentPaymentSheet } from '@stripe/stripe-react-native';
@@ -67,7 +68,7 @@ export class PaymentService {
      */
     async processPayment(
         amount: number,
-        currency: string = 'USD',
+        currency: string = 'USD', // defaults to USD if not provided
         description: string = 'Ride Payment'
     ): Promise<{ success: boolean; transactionId?: string; error?: string }> {
         try {
@@ -75,49 +76,49 @@ export class PaymentService {
                 await this.initialize();
             }
 
-            // 1. Fetch PaymentIntent client secret from your backend (Supabase Edge Function)
-            // Note: Since we don't have the backend set up yet, we'll simulate this part
-            // In production, NEVER create PaymentIntents on the client with the Secret Key
-
-            // For DEMO purposes only (and to test UI), we will mock the backend response
-            // OR use a very specific test token if available. 
-            // However, with standard Stripe implementation, we MUST have a backend endpoint.
-
-            // Let's implement the client-side flow assuming we get a clientSecret:
-
-            // const { data, error } = await supabase.functions.invoke('create-payment-intent', {
-            //     body: { amount: amount * 100, currency } // Amount in cents
-            // });
-
-            // if (error || !data?.clientSecret) {
-            //     throw new Error('Failed to create payment intent');
-            // }
-
-            // Since we cannot actually charge without a backend sending the clientSecret,
-            // We will alert the user that backend is needed for real charges.
-            Alert.alert(
-                'Payment Info',
-                'To process real payments, a backend endpoint is required to generate the PaymentIntent client secret using the Secret Key. This demo mocks the success.'
-            );
-
-            // Mock success for UI flow
-            return {
-                success: true,
-                transactionId: `stripe_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-            };
-
-            /* 
-            // Real implementation with clientSecret:
-            const { error: paymentError } = await presentPaymentSheet({
-                clientSecret: data.clientSecret,
+            // 1. Fetch PaymentIntent client secret from Supabase Edge Function
+            const { data, error } = await supabase.functions.invoke('payment-sheet', {
+                body: { amount, currency }
             });
+
+            if (error) {
+                console.error('Edge Function Error:', error);
+                throw new Error('Failed to initialize payment');
+            }
+
+            const { paymentIntent, ephemeralKey, customer, publishableKey } = data;
+
+            if (!paymentIntent) throw new Error('Could not retrieve payment intent');
+
+
+            // 2. Initialize Payment Sheet
+            const { error: initError } = await initPaymentSheet({
+                merchantDisplayName: 'Wasel',
+                customerId: customer,
+                customerEphemeralKeySecret: ephemeralKey,
+                paymentIntentClientSecret: paymentIntent,
+                returnURL: 'wasel://stripe-redirect',
+                allowsDelayedPaymentMethods: true,
+                defaultBillingDetails: {
+                    name: 'Wasel User',
+                }
+            });
+
+            if (initError) {
+                return { success: false, error: initError.message };
+            }
+
+            // 3. Present Payment Sheet
+            const { error: paymentError } = await presentPaymentSheet();
 
             if (paymentError) {
                 return { success: false, error: paymentError.message };
             }
 
-            return { success: true }; 
-            */
+            return {
+                success: true,
+                transactionId: paymentIntent.split('_secret')[0]
+            };
 
         } catch (error) {
             console.error('Payment processing failed:', error);

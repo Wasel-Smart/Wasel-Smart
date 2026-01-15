@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { supabase } from '../lib/supabase';
 
 interface PaymentMethod {
   id: string;
@@ -48,22 +49,32 @@ export function usePayments() {
     setError(null);
 
     try {
-      // Simulate payment processing
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
+      // 1. Call Supabase Edge Function to get PaymentIntent client secret
+      const { data, error: functionError } = await supabase.functions.invoke('payment-sheet', {
+        body: { amount, currency: 'AED', paymentMethodId }
+      });
+
+      if (functionError) throw new Error(functionError.message);
+      if (!data?.paymentIntent) throw new Error('Failed to create payment intent');
+
+      // 2. Here we would typically Confirm the payment using Stripe.js (Web)
+      // Since this hook abstracts it, we'll return the Intent details for the UI to confirm
+      // OR you can use useStripe() hook inside your component to validte.
+
+      // For this implementation, we return the client_secret as the ID, so the UI knows it's ready
+      // The actual confirmation (stripe.confirmCardPayment) typically happens in the UI component 
+      // or we import loadStripe here.
+
       const paymentIntent: PaymentIntent = {
-        id: `pi_${Date.now()}`,
+        id: data.paymentIntent, // This is client_secret
         amount,
         currency: 'AED',
-        status: Math.random() > 0.1 ? 'succeeded' : 'failed'
+        status: 'pending' // UI must confirm it
       };
-
-      if (paymentIntent.status === 'failed') {
-        throw new Error('Payment failed. Please try again.');
-      }
 
       return paymentIntent;
     } catch (err: any) {
+      console.error('Payment Error:', err);
       setError(err.message);
       throw err;
     } finally {
@@ -81,7 +92,7 @@ export function usePayments() {
     try {
       // Simulate adding payment method
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
+
       const newMethod: PaymentMethod = {
         id: Date.now().toString(),
         type: 'card',

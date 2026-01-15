@@ -102,9 +102,11 @@ export default function Login() {
                         </TouchableOpacity>
                     )}
 
-                    <TouchableOpacity style={styles.forgotPassword}>
-                        <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-                    </TouchableOpacity>
+                    <Link href="/auth/forgot-password" asChild>
+                        <TouchableOpacity style={styles.forgotPassword}>
+                            <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+                        </TouchableOpacity>
+                    </Link>
 
                     <TouchableOpacity
                         style={[styles.button, loading && styles.buttonDisabled]}

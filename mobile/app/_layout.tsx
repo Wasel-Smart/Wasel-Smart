@@ -4,14 +4,22 @@ import { Slot, useRouter, useSegments } from 'expo-router';
 import { useAuthStore } from '../src/stores/authStore';
 import { View, ActivityIndicator } from 'react-native';
 
+import { notificationService } from '../src/services';
+
 export default function RootLayout() {
-    const { session, initialized, initialize } = useAuthStore();
+    const { session, initialized, initialize, user } = useAuthStore();
     const segments = useSegments();
     const router = useRouter();
 
     useEffect(() => {
         initialize();
     }, []);
+
+    useEffect(() => {
+        if (user && session) {
+            notificationService.registerForPushNotificationsAsync(user.id);
+        }
+    }, [user, session]);
 
     useEffect(() => {
         if (!initialized) return;

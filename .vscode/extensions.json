@@ -1,5 +1,5 @@
 {
-    "recommendations": [
-        "googlecloudtools.firebase-dataconnect-vscode"
-    ]
+  "recommendations": [
+    "denoland.vscode-deno"
+  ]
 }

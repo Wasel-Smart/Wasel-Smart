@@ -14,14 +14,17 @@ interface TripItem {
     status: string;
     price: number;
     role: 'driver' | 'passenger';
-    otherPartyName: string;
+    driverId?: string;
 }
+
+import { RateDriver } from './RateDriver';
 
 export function MyTrips() {
     const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming');
     const [trips, setTrips] = useState<TripItem[]>([]);
     const [loading, setLoading] = useState(true);
     const { user } = useAuthStore();
+    const [ratingData, setRatingData] = useState<{ tripId: string, driverId: string, driverName: string } | null>(null);
 
     useEffect(() => {
         fetchTrips();
@@ -45,7 +48,7 @@ export function MyTrips() {
                 date: t.departure_date,
                 time: t.departure_time,
                 status: t.status,
-                price: t.price_per_seat * t.available_seats, // Approximate total potential
+                price: t.price_per_seat * t.available_seats,
                 role: 'driver',
                 otherPartyName: 'You (Driver)'
             }));
@@ -59,18 +62,16 @@ export function MyTrips() {
                 status: b.status,
                 price: b.total_price,
                 role: 'passenger',
-                otherPartyName: b.trip?.driver?.full_name || 'Unknown Driver'
+                otherPartyName: b.trip?.driver?.full_name || 'Unknown Driver',
+                driverId: b.trip?.driver?.id
             }));
 
             const allTrips = [...transformedDriverTrips, ...transformedPassengerTrips];
-
-            // Sort by date desceding
             allTrips.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
             setTrips(allTrips);
         } catch (error) {
             console.error('Failed to fetch trips:', error);
-            // Alert.alert('Error', 'Failed to load your trips');
         } finally {
             setLoading(false);
         }
@@ -79,7 +80,6 @@ export function MyTrips() {
     const filteredTrips = trips.filter(trip => {
         const tripDate = new Date(trip.date);
         const today = new Date();
-        // Reset time for comparison
         today.setHours(0, 0, 0, 0);
 
         if (activeTab === 'upcoming') {
@@ -126,16 +126,43 @@ export function MyTrips() {
                     <Clock size={14} color="#6b7280" />
                     <Text style={styles.detailText}>{item.time}</Text>
                 </View>
+            </View>
+
+            <View style={styles.footerRow}>
                 <View style={styles.detailRow}>
                     <User size={14} color="#6b7280" />
                     <Text style={styles.detailText}>{item.otherPartyName}</Text>
                 </View>
+
+                {item.role === 'passenger' && item.status === 'completed' && item.driverId && (
+                    <TouchableOpacity
+                        style={styles.rateButton}
+                        onPress={() => setRatingData({
+                            tripId: item.id,
+                            driverId: item.driverId!,
+                            driverName: item.otherPartyName
+                        })}
+                    >
+                        <Text style={styles.rateButtonText}>Rate Driver</Text>
+                    </TouchableOpacity>
+                )}
             </View>
         </TouchableOpacity>
     );
 
     return (
         <View style={styles.container}>
+            <RateDriver
+                isVisible={!!ratingData}
+                onClose={() => setRatingData(null)}
+                tripId={ratingData?.tripId || ''}
+                driverId={ratingData?.driverId || ''}
+                driverName={ratingData?.driverName || ''}
+                onSuccess={() => {
+                    Alert.alert('Success', 'Rating submitted');
+                    setRatingData(null);
+                }}
+            />
             <View style={styles.tabs}>
                 <TouchableOpacity
                     style={[styles.tab, activeTab === 'upcoming' && styles.activeTab]}
@@ -275,5 +302,25 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: '#6b7280',
         marginLeft: 4,
+    },
+    footerRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginTop: 12,
+        borderTopWidth: 1,
+        borderTopColor: '#f3f4f6',
+        paddingTop: 12,
+    },
+    rateButton: {
+        backgroundColor: '#f59e0b',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 8,
+    },
+    rateButtonText: {
+        color: 'white',
+        fontSize: 12,
+        fontWeight: 'bold',
     },
 });

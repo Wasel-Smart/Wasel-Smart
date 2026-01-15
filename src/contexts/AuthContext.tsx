@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
-import type { User, AuthChangeEvent } from '@supabase/supabase-js';
+import type { User, AuthChangeEvent, Session } from '@supabase/supabase-js';
 
 export interface Profile {
   id: string;
@@ -56,6 +56,7 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   updateProfile: (updates: Partial<Profile>) => Promise<{ error: any }>;
   refreshProfile: () => Promise<void>;
+  resetPassword: (email: string) => Promise<{ error: any }>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -66,9 +67,10 @@ const AuthContext = createContext<AuthContextType>({
   signIn: async () => ({ error: null }),
   signInWithGoogle: async () => ({ error: null }),
   signInWithFacebook: async () => ({ error: null }),
-  signOut: async () => {},
+  signOut: async () => { },
   updateProfile: async () => ({ error: null }),
-  refreshProfile: async () => {},
+  refreshProfile: async () => { },
+  resetPassword: async () => ({ error: null }),
 });
 
 export const useAuth = () => {
@@ -183,7 +185,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event: AuthChangeEvent, session) => {
+      async (event: AuthChangeEvent, session: Session | null) => {
         console.log('Auth state changed:', event, session?.user?.email);
 
         if (session?.user) {
@@ -345,6 +347,25 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
+  const resetPassword = async (email: string) => {
+    try {
+      setLoading(true);
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+
+      if (error) {
+        return { error };
+      }
+
+      return { error: null };
+    } catch (error) {
+      return { error };
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const refreshProfile = async () => {
     if (!user) return;
 
@@ -363,6 +384,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     signOut,
     updateProfile,
     refreshProfile,
+    resetPassword,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
