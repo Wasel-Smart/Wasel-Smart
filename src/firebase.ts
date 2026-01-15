@@ -53,22 +53,38 @@ try {
     app = initializeApp(firebaseConfig);
     console.log('✅ Firebase initialized successfully');
 
-    // Initialize messaging for push notifications
-    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-      messaging = getMessaging(app);
-      console.log('✅ Firebase Messaging initialized');
+    // Initialize messaging for push notifications only when supported
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window) {
+      try {
+        messaging = getMessaging(app);
+        console.log('✅ Firebase Messaging initialized');
+      } catch (err) {
+        console.warn('Firebase Messaging initialization failed:', err);
+        messaging = null;
+      }
     }
 
-    // Initialize analytics (only in production)
-    if (import.meta.env.VITE_APP_ENV === 'production') {
-      analytics = getAnalytics(app);
-      console.log('✅ Firebase Analytics initialized');
+    // Use Vite's MODE to detect production reliably
+    const isProd = import.meta.env.MODE === 'production' || import.meta.env.VITE_APP_ENV === 'production';
+
+    // Initialize analytics (only in production and when window exists)
+    if (isProd && typeof window !== 'undefined') {
+      try {
+        analytics = getAnalytics(app);
+        console.log('✅ Firebase Analytics initialized');
+      } catch (err) {
+        console.warn('Firebase Analytics init failed:', err);
+      }
     }
 
-    // Initialize performance monitoring (only in production)
-    if (import.meta.env.VITE_APP_ENV === 'production') {
-      performance = getPerformance(app);
-      console.log('✅ Firebase Performance initialized');
+    // Initialize performance monitoring (only in production and when window exists)
+    if (isProd && typeof window !== 'undefined') {
+      try {
+        performance = getPerformance(app);
+        console.log('✅ Firebase Performance initialized');
+      } catch (err) {
+        console.warn('Firebase Performance init failed:', err);
+      }
     }
   } else {
     console.warn('⚠️ Firebase not configured. Push notifications will be disabled.');
@@ -91,19 +107,26 @@ export async function requestNotificationPermission(): Promise<string | null> {
 
   try {
     const permission = await Notification.requestPermission();
-    
-    if (permission === 'granted') {
-      console.log('✅ Notification permission granted');
-      
-      // Get FCM token
-      const token = await getToken(messaging, {
-        vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
-      });
-      
+
+    if (permission !== 'granted') {
+      console.warn('⚠️ Notification permission denied');
+      return null;
+    }
+
+    console.log('✅ Notification permission granted');
+
+    const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY;
+    if (!vapidKey) {
+      console.warn('VAPID key not configured (VITE_FIREBASE_VAPID_KEY). Skipping getToken.');
+      return null;
+    }
+
+    try {
+      const token = await getToken(messaging, { vapidKey });
       console.log('FCM Token:', token);
       return token;
-    } else {
-      console.warn('⚠️ Notification permission denied');
+    } catch (err) {
+      console.error('Error getting FCM token:', err);
       return null;
     }
   } catch (error) {
